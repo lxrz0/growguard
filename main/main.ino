@@ -11,45 +11,54 @@ const char* ssid = "NETGEAR11";
 const char* wifi_pwd = "rapidwind673";
 
 /** mqtt broker details **/
-// const char* mqtt_svr = "23afd78a350347c689a20e4620b72ceb.s2.eu.hivemq.cloud";
-const char* mqtt_svr = "test.mosquitto.org";
-// const char* mqtt_username = "cl586";
-// const char* mqtt_pwd = "cEu9NQfrRkvUmdYw6ZShn2";
+const char* mqtt_svr = "23afd78a350347c689a20e4620b72ceb.s2.eu.hivemq.cloud";
+// const char* mqtt_svr = "test.mosquitto.org";
+const char* mqtt_username = "cl586";
+const char* mqtt_pwd = "cEu9NQfrRkvUmdYw6ZShn2";
 const char* mqtt_publish_topic = "sensors/light";
-const int mqtt_port = 1883;
+const int mqtt_port = 8883;
 
 /** wifi connection client init **/
-WiFiClient wifiClient;
+WiFiClientSecure wifiClient;
 PubSubClient client(wifiClient);
 
 /** sensor initialisation **/
 BH1750 LightSensor;
 
 /** certificate **/
-const char* ca_cert = \
-"-----BEGIN CERTIFICATE-----\n"
-"MIIDzzCCAregAwIBAgIUCfESdE5OY1BYe3i34D5jpxgPQnUwDQYJKoZIhvcNAQEL\n"
-"BQAwdzELMAkGA1UEBhMCR0IxEzARBgNVBAgMClNvbWUtU3RhdGUxDzANBgNVBAcM\n"
-"BmxvbmRvbjEhMB8GA1UECgwYY2w1ODYgdW5pdmVyc2l0eSBvZiBrZW50MR8wHQYJ\n"
-"KoZIhvcNAQkBFhBjbDU4NkBrZW50LmFjLnVrMB4XDTIzMTExOTE4MDAyNFoXDTI0\n"
-"MTExODE4MDAyNFowdzELMAkGA1UEBhMCR0IxEzARBgNVBAgMClNvbWUtU3RhdGUx\n"
-"DzANBgNVBAcMBmxvbmRvbjEhMB8GA1UECgwYY2w1ODYgdW5pdmVyc2l0eSBvZiBr\n"
-"ZW50MR8wHQYJKoZIhvcNAQkBFhBjbDU4NkBrZW50LmFjLnVrMIIBIjANBgkqhkiG\n"
-"9w0BAQEFAAOCAQ8AMIIBCgKCAQEAryfMWs6d96vS99fAn8Q0l6EqgwH87mJ5yPQ+\n"
-"DF4zt20KVJB4sXBsbZsNc633hfyyA5mGe7cyawYcBdA51aRi0sf2SvZJ8DDx6Sxl\n"
-"lOyvgrBNTmSIHkgtEKjRlyxgSe+UFCQGxOIe1Nm1T0gEUj73BmnPPgUW+dGfU2fj\n"
-"ZRFJU3UNkGdPXOCFev7mA8m3ITLaTPl1/OfpF7t9oaAxC/FaerSG3qk6v5M3aJep\n"
-"/vaC/yv7Th7KZ5J0pU6B6clD1bVGtJyuC7+stBra+kKg2thTO0wqMDjqeIcaEF9o\n"
-"bCsKs0MfQJCnUZ9IKuntFqjwqO2nOwSb04CROY2IQOluF1ysXQIDAQABo1MwUTAd\n"
-"BgNVHQ4EFgQUy5wfnBKmgJBtI8QLqMdx+fKTvx8wHwYDVR0jBBgwFoAUy5wfnBKm\n"
-"gJBtI8QLqMdx+fKTvx8wDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOC\n"
-"AQEAGl0LIpjAjFnIYuaFw6cjVooRO+ww3NnB9thF64cjjL5EqAwQN8w7GEiMnRm+\n"
-"39nSrZF7p2l01AOpZcaw0NDpo1CIXye9kclS3DjaMXTqyEX9+QqZUGxpVqzx+P7e\n"
-"/yTsh+0ydk2u37v6q8ynLtNmcNZPHbXeZw7k7v6f9cIVoTS6El3gBYZ6rH/ieoyu\n"
-"y/AU3H/3xBAsFm2Q6jew0SCdWMyOFO5Vhjx1PoZZNrtNuz9Vb/oo2/6yFiGfwqYy\n"
-"mDFZlP7+V+w3zLeJX8CEVWevWL+lctFjfDTGWoLQqbdotGIpeCO1f9Cq4mgGhvrN\n"
-"IQerkbCMjwWs5NgCpgLrHqt9wA==\n"
-"-----END CERTIFICATE-----\n";
+const char* ca_cert = R"(
+-----BEGIN CERTIFICATE-----
+MIIFYDCCBEigAwIBAgIQQAF3ITfU6UK47naqPGQKtzANBgkqhkiG9w0BAQsFADA/
+MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
+DkRTVCBSb290IENBIFgzMB4XDTIxMDEyMDE5MTQwM1oXDTI0MDkzMDE4MTQwM1ow
+TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
+cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwggIiMA0GCSqGSIb3DQEB
+AQUAA4ICDwAwggIKAoICAQCt6CRz9BQ385ueK1coHIe+3LffOJCMbjzmV6B493XC
+ov71am72AE8o295ohmxEk7axY/0UEmu/H9LqMZshftEzPLpI9d1537O4/xLxIZpL
+wYqGcWlKZmZsj348cL+tKSIG8+TA5oCu4kuPt5l+lAOf00eXfJlII1PoOK5PCm+D
+LtFJV4yAdLbaL9A4jXsDcCEbdfIwPPqPrt3aY6vrFk/CjhFLfs8L6P+1dy70sntK
+4EwSJQxwjQMpoOFTJOwT2e4ZvxCzSow/iaNhUd6shweU9GNx7C7ib1uYgeGJXDR5
+bHbvO5BieebbpJovJsXQEOEO3tkQjhb7t/eo98flAgeYjzYIlefiN5YNNnWe+w5y
+sR2bvAP5SQXYgd0FtCrWQemsAXaVCg/Y39W9Eh81LygXbNKYwagJZHduRze6zqxZ
+Xmidf3LWicUGQSk+WT7dJvUkyRGnWqNMQB9GoZm1pzpRboY7nn1ypxIFeFntPlF4
+FQsDj43QLwWyPntKHEtzBRL8xurgUBN8Q5N0s8p0544fAQjQMNRbcTa0B7rBMDBc
+SLeCO5imfWCKoqMpgsy6vYMEG6KDA0Gh1gXxG8K28Kh8hjtGqEgqiNx2mna/H2ql
+PRmP6zjzZN7IKw0KKP/32+IVQtQi0Cdd4Xn+GOdwiK1O5tmLOsbdJ1Fu/7xk9TND
+TwIDAQABo4IBRjCCAUIwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYw
+SwYIKwYBBQUHAQEEPzA9MDsGCCsGAQUFBzAChi9odHRwOi8vYXBwcy5pZGVudHJ1
+c3QuY29tL3Jvb3RzL2RzdHJvb3RjYXgzLnA3YzAfBgNVHSMEGDAWgBTEp7Gkeyxx
++tvhS5B1/8QVYIWJEDBUBgNVHSAETTBLMAgGBmeBDAECATA/BgsrBgEEAYLfEwEB
+ATAwMC4GCCsGAQUFBwIBFiJodHRwOi8vY3BzLnJvb3QteDEubGV0c2VuY3J5cHQu
+b3JnMDwGA1UdHwQ1MDMwMaAvoC2GK2h0dHA6Ly9jcmwuaWRlbnRydXN0LmNvbS9E
+U1RST09UQ0FYM0NSTC5jcmwwHQYDVR0OBBYEFHm0WeZ7tuXkAXOACIjIGlj26Ztu
+MA0GCSqGSIb3DQEBCwUAA4IBAQAKcwBslm7/DlLQrt2M51oGrS+o44+/yQoDFVDC
+5WxCu2+b9LRPwkSICHXM6webFGJueN7sJ7o5XPWioW5WlHAQU7G75K/QosMrAdSW
+9MUgNTP52GE24HGNtLi1qoJFlcDyqSMo59ahy2cI2qBDLKobkx/J3vWraV0T9VuG
+WCLKTVXkcGdtwlfFRjlBz4pYg1htmf5X6DYO8A4jqv2Il9DjXA6USbW1FzXSLr9O
+he8Y4IWS6wY7bCkjCWDcRQJMEhg76fsO3txE+FiYruq9RUWhiF1myv4Q6W+CyBFC
+Dfvp7OOGAN6dEOM4+qR9sdjoSYKEBpsr6GtPAQw4dy753ec5
+-----END CERTIFICATE-----
+)";
 
 
 // track number of wifi connection attempts
@@ -86,6 +95,8 @@ void setupWifi () {
     reconnection_count++;
   }
 
+  wifiClient.setCACert(ca_cert);
+
   Serial.println("WiFi connected");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
@@ -98,7 +109,7 @@ void connectMqtt () {
     Serial.println();
     String clientId = "ESP32Client-" + String(random(0xffff), HEX);
 
-    if (client.connect(clientId.c_str())) {
+    if (client.connect(clientId.c_str(), mqtt_username, mqtt_pwd)) {
       Serial.printf("connected to: %s", mqtt_svr);
       Serial.println();
 
@@ -121,7 +132,8 @@ void setup() {
   Serial.begin(BAUD_RATE);
   
   setupWifi();
-  // wifiClient.setCACert(ca_cert);
+  // wifiClient.setInsecure();
+  
   
   // /** handle mqtt connection **/
   client.setServer(mqtt_svr, mqtt_port);
@@ -143,8 +155,8 @@ void loop() {
   if (!client.connected()) connectMqtt();
   client.loop();
 
-  delay(500);
+  delay(1000);
   float lux = LightSensor.readLightLevel();
   Serial.println(lux);
-  client.publish("sensors/data", String (lux, 2).c_str(), true);
+  // client.publish("sensors/data", String (lux, 2).c_str(), true);
 }
