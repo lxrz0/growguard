@@ -3,16 +3,16 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
+#include <Adafruit_Sensor.h>
+#include "Adafruit_BME280.h"
 
 #define BAUD_RATE 9600
-
 /** WiFi connection details **/
-const char* ssid = "NETGEAR11";
-const char* wifi_pwd = "rapidwind673";
+const char* ssid = "EE-Hub-3pjF";
+const char* wifi_pwd = "LEG-excel-fair";
 
 /** mqtt broker details **/
 const char* mqtt_svr = "23afd78a350347c689a20e4620b72ceb.s2.eu.hivemq.cloud";
-// const char* mqtt_svr = "test.mosquitto.org";
 const char* mqtt_username = "cl586";
 const char* mqtt_pwd = "cEu9NQfrRkvUmdYw6ZShn2";
 const char* mqtt_publish_topic = "sensors/light";
@@ -24,6 +24,7 @@ PubSubClient client(wifiClient);
 
 /** sensor initialisation **/
 BH1750 LightSensor;
+Adafruit_BME280 bme; 
 
 /** certificate **/
 const char* ca_cert = R"(
@@ -117,7 +118,6 @@ void connectMqtt () {
       client.subscribe("sensors/action");
 
       delay(100);
-      Serial.print("Pushing a value now");
 
       client.publish("sensors/data", "hello world", true);
     } else {
@@ -132,7 +132,6 @@ void setup() {
   Serial.begin(BAUD_RATE);
   
   setupWifi();
-  // wifiClient.setInsecure();
   
   
   // /** handle mqtt connection **/
@@ -145,12 +144,34 @@ void setup() {
   LightSensor.configure(BH1750::ONE_TIME_HIGH_RES_MODE);
   LightSensor.begin();
 
-  Serial.println(F("BH1750 Test begin"));
+  /** initialise BME sensor **/
+  // bool bmeConnected = bme.begin(0x76);
+  // if (!bmeConnected) {
+  //   Serial.println("Could not find a valid BME280");
+  //   while (1);
+  // }
 
+  if (!bme.begin(0x76)) {
+    Serial.println("Could not find a valid BME280 sensor at address 0x76, trying 0x77...");
+    if (!bme.begin(0x77)) {
+        Serial.println("Could not find a valid BME280 sensor at address 0x77 either!");
+        while (1);
+    }
+}
 
 }
 
 void loop() {
+
+  // while (!Serial); // wait for serial
+
+  Serial.print("Temperature = ");
+  Serial.print(bme.readTemperature());
+  Serial.println(" *C");
+  Serial.println();
+  Serial.print(bme.readPressure());
+  Serial.println();
+  Serial.print(bme.readHumidity());
 
   if (!client.connected()) connectMqtt();
   client.loop();
