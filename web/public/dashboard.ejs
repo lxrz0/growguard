@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Growguard Authenticate</title>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div id="navbar">
+        <p class="m-0" id="logo">Growguard Dashboard</p>
+        <p class="m-0" id="logout">Logout</p>
+    </div>
+
+    <div class="row mx-0" id="graphs-row">
+        <div class="col-lg-4">
+            <h6>Light Readings</h6>
+            <canvas id="lightChart"></canvas>
+        </div>
+        <div class="col-lg-4">
+            <h6>Tempreture Readings</h6>
+        </div>
+        <div class="col-lg-4">
+            <h6>Pressure Readings</h6>
+        </div>
+    </div>
+</body>
+
+</html>
+
+<script src="/modules/socket.io/client-dist/socket.io.js"></script>
+<script>
+
+    // create charts
+    const lightChartCtx = document.getElementById("lightChart").getContext("2d");
+    const lightChartData = new Chart(lightChartCtx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "light readings",
+                data: [],
+                fill: false,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1,
+                animation: {
+                    duration: 1000,
+                }
+            }]
+        }
+    })
+
+    // create a socket.io connection
+    const socket = io();
+
+    socket.on("event", d => {
+        console.log(d);
+        lightChartData.data.datasets[0].data.push(d.value)
+        lightChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
+
+        // if chart contains more than 20 readings, being to pop
+        if (lightChartData.data.datasets[0].data.length > 20) {
+            lightChartData.data.datasets.forEach((dataset) => {
+                dataset.data.shift(); // Remove the first data point
+            });
+            lightChartData.data.labels.shift();
+        }
+
+        lightChartData.update("none");
+    })
+
+
+
+</script>
+
+<style>
+    #navbar {
+        width: 100%;
+        min-height: 40px;
+        background-color: lightgrey;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    #graphs-row {
+        margin-top: 30px;
+    }
+
+    #navbar p {
+        padding: 20px;
+    }
+
+    * {
+        font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    }
+</style>
