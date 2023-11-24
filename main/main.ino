@@ -5,11 +5,12 @@
 #include <PubSubClient.h>
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BME280.h"
+#include <ArduinoJson.h>
 
 #define BAUD_RATE 9600
 /** WiFi connection details **/
-const char* ssid = "EE-Hub-3pjF";
-const char* wifi_pwd = "LEG-excel-fair";
+const char* ssid = "NETGEAR11";
+const char* wifi_pwd = "rapidwind673";
 
 /** mqtt broker details **/
 const char* mqtt_svr = "23afd78a350347c689a20e4620b72ceb.s2.eu.hivemq.cloud";
@@ -176,8 +177,22 @@ void loop() {
   if (!client.connected()) connectMqtt();
   client.loop();
 
+ /** create a JSON structure for data **/
+  StaticJsonDocument<256> jsonPayload;
+
+  /** sensor readings **/
+  jsonPayload["lightIntensity"] = LightSensor.readLightLevel();
+  jsonPayload["temperature"] = bme.readTemperature();
+  jsonPayload["humidity"] = bme.readHumidity();
+  jsonPayload["pressure"] = bme.readPressure();
+
   delay(1000);
   float lux = LightSensor.readLightLevel();
   Serial.println(lux);
-  // client.publish("sensors/data", String (lux, 2).c_str(), true);
+
+  String payload;
+
+  serializeJson(jsonPayload, payload);
+
+  // client.publish("sensors/data", payload.c_str(), true);
 }
