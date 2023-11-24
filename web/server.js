@@ -41,7 +41,7 @@ client.on("message", (topic, data) => {
     l(Buffer.from(data).toString());
 
     io.emit("event", {
-        value: Buffer.from(data).toString(), 
+        value: JSON.parse(Buffer.from(data).toString()), 
         timestamp: Date.now(), 
     })
 })

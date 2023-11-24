@@ -26,9 +26,11 @@
         </div>
         <div class="col-lg-4">
             <h6>Tempreture Readings</h6>
+            <canvas id="tempChart"></canvas>
         </div>
         <div class="col-lg-4">
             <h6>Pressure Readings</h6>
+            <canvas id="pressureChart"></canvas>
         </div>
     </div>
 </body>
@@ -57,12 +59,48 @@
         }
     })
 
+    const tempChartCtx = document.getElementById("tempChart").getContext("2d");
+    const tempChartData = new Chart(tempChartCtx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "temperature readings",
+                data: [],
+                fill: false,
+                borderColor: '#ff6600',
+                tension: 0.1,
+                animation: {
+                    duration: 1000,
+                }
+            }]
+        }
+    })
+
+    const pressureChartCtx = document.getElementById("pressureChart").getContext("2d");
+    const pressureChartData = new Chart(pressureChartCtx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "pressure readings",
+                data: [],
+                fill: false,
+                borderColor: '#33cc33',
+                tension: 0.1,
+                animation: {
+                    duration: 1000,
+                    easing: "linear"
+                }
+            }]
+        }
+    })
+
     // create a socket.io connection
     const socket = io();
 
     socket.on("event", d => {
-        console.log(d);
-        lightChartData.data.datasets[0].data.push(d.value)
+        lightChartData.data.datasets[0].data.push(d.value.lightIntensity)
         lightChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
 
         // if chart contains more than 20 readings, being to pop
@@ -73,7 +111,33 @@
             lightChartData.data.labels.shift();
         }
 
-        lightChartData.update("none");
+        lightChartData.update();
+
+        tempChartData.data.datasets[0].data.push(d.value.temperature)
+        tempChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
+
+        // if chart contains more than 20 readings, being to pop
+        if (tempChartData.data.datasets[0].data.length > 20) {
+            tempChartData.data.datasets.forEach((dataset) => {
+                dataset.data.shift(); // Remove the first data point
+            });
+            tempChartData.data.labels.shift();
+        }
+
+        tempChartData.update();
+
+        pressureChartData.data.datasets[0].data.push(d.value.pressure)
+        pressureChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
+
+        // if chart contains more than 20 readings, being to pop
+        if (pressureChartData.data.datasets[0].data.length > 20) {
+            pressureChartData.data.datasets.forEach((dataset) => {
+                dataset.data.shift(); // Remove the first data point
+            });
+            pressureChartData.data.labels.shift();
+        }
+
+        pressureChartData.update();
     })
 
 
