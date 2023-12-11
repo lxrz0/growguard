@@ -15,6 +15,9 @@ const http = require("http");
 const server = http.createServer(app);
 const io = require("socket.io")(server);
 
+const sensorDataStorage = [];
+
+
 // connect to MQTT broker
 const mqtt_broker = "23afd78a350347c689a20e4620b72ceb.s2.eu.hivemq.cloud";
 const mqtt_sub_topic = "sensors/data";
@@ -25,6 +28,20 @@ const client = mqtt.connect({
     username: "cl586", 
     password: "cEu9NQfrRkvUmdYw6ZShn2" // put into env variable
 });
+
+/** method saves a json payload in memory - limited to 10 */
+const saveInMemory = function (jsonPayload) {
+    try {
+        sensorDataStorage.push(jsonPayload);
+
+        if (sensorDataStorage.length > 20) {
+            // remove the first item from the array
+            sensorDataStorage.shift();
+        }
+    } catch (error) {
+        console.log(error);
+    }
+}
 
 client.on("connect", _ => {
     console.log("[+] connected to mqtt broker");
@@ -40,10 +57,20 @@ client.on("connect", _ => {
 client.on("message", (topic, data) => {
     l(Buffer.from(data).toString());
 
-    io.emit("event", {
-        value: JSON.parse(Buffer.from(data).toString()), 
-        timestamp: Date.now(), 
-    })
+    let payload = {...JSON.parse(Buffer.from(data).toString()), timestamp: Date.now()};
+
+    try {
+        io.emit("event", {
+            value: payload, 
+            timestamp: Date.now(), 
+        })
+    } catch (error) {
+        l(error.message)
+    }
+
+    
+
+    saveInMemory(payload);
 })
 
 io.on("connection", s => {
@@ -53,6 +80,10 @@ io.on("connection", s => {
 app.get("/", (req, res) => {
     res.render("login")
 });
+
+app.get("/previousData", (req, res) => {
+    return res.send(sensorDataStorage);
+})
 
 app.get("/dashboard", (req, res) => {
     res.render("dashboard")

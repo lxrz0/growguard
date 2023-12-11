@@ -19,18 +19,127 @@
         <p class="m-0" id="logout">Logout</p>
     </div>
 
-    <div class="row mx-0" id="graphs-row">
-        <div class="col-lg-4">
-            <h6>Light Readings</h6>
+    <div class="row mx-0">
+        <div class="col-6">
+            <div class="d-flex align-items-center py-3">
+                <img src="/public/goofy-ahh-mascot.png" alt="" id="mascot">
+                <div class="p-3">
+                    <h3>Dave</h3>
+                    <p class="text-secondary"><a href="#">Devices</a> / Dave</p>
+
+                    <div id="battery">
+                        <span>Online</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="p-3">
+                <h3>Plant Configuration</h3>
+                <p class="text-secondary">Set your plant's target metrics</p>
+                <div class="form-group">
+                    <label for="">Tempreture</label>
+                    <input type="text" class="form-control" placeholder="Celcius">
+                </div>
+                <div class="form-group">
+                    <label for="">Soil Moisture</label>
+                    <input type="text" class="form-control" placeholder="LOW | MEDIUM | HIGH">
+                </div>
+                <div class="form-group">
+                    <label for="">Sunlight</label>
+                    <input type="text" class="form-control" placeholder="LOW | MEDIUM | HIGH">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row p-3 mx-0 px-0">
+        <div class="col-md-3">
+            <div class="datatab">
+                <div class="d-flex justify-content-between">
+                    <div class="datatab-data">
+                        <p class="data-title">Sunlight</p>
+                        <h2><b>10,482</b> lux</h2>
+                        <p class="small text-secondary">This week</p>
+                    </div>
+
+                    <img src="/public/sun.png" alt="" class="tab-icon">
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="datatab">
+                <div class="d-flex justify-content-between">
+                    <div class="datatab-data">
+                        <p class="data-title">Air Humidity</p>
+                        <h2><b>72.5%</b> RH</h2>
+                        <!-- <p class="small text-secondary m-0"><i>Relative Humidity</i></p> -->
+                        <p class="small text-secondary">This week's Avg</p>
+                    </div>
+
+                    <img src="/public/water.png" alt="" class="tab-icon">
+                </div>
+            </div>
+            <p class="small text-secondary mt-1">💭 Your plant has the same relative humidity as the Amazon Rainforest
+            </p>
+        </div>
+        <div class="col-md-3">
+            <div class="datatab">
+                <div class="d-flex justify-content-between">
+                    <div class="datatab-data">
+                        <p class="data-title">Soil Humidity</p>
+                        <h2><b>82.4</b>%</h2>
+                        <p class="small text-secondary">This week</p>
+                    </div>
+
+                    <img src="/public/soil.png" alt="" class="tab-icon">
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="datatab">
+                <div class="d-flex justify-content-between">
+                    <div class="datatab-data">
+                        <p class="data-title">Ambient Tempreture</p>
+                        <h2><b>28.2C</b></h2>
+                        <p class="small text-secondary">This week</p>
+                    </div>
+
+                    <img src="/public/therm.png" alt="" class="tab-icon">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mx-0 p-2 px-0 mx-0 justify-content-center" id="graphs-row">
+        <div class="col-lg-3">
+            <h6>Light Readings 💡</h6>
             <canvas id="lightChart"></canvas>
         </div>
-        <div class="col-lg-4">
-            <h6>Tempreture Readings</h6>
+        <br>
+        <div class="col-lg-3">
+            <h6>Tempreture Readings 🔥</h6>
             <canvas id="tempChart"></canvas>
         </div>
-        <div class="col-lg-4">
-            <h6>Pressure Readings</h6>
+        <br>
+        <div class="col-lg-3">
+            <h6>Air Humidity Readings ☁️</h6>
             <canvas id="pressureChart"></canvas>
+        </div>
+        <div class="col-lg-3">
+            <h6>Soil Humidity Readings 🏋️</h6>
+            <canvas id="soilChart"></canvas>
+        </div>
+    </div>
+
+
+
+    <div class="row p-3 px-0 mx-0 d-none">
+        <div class="col-md-6">
+            <h4>Average Plant Readings</h4>
+
+            <canvas id="averagesChart"></canvas>
+
         </div>
     </div>
 </body>
@@ -38,6 +147,7 @@
 </html>
 
 <script src="/modules/socket.io/client-dist/socket.io.js"></script>
+<script src="/modules/axios/dist/axios.js"></script>
 <script>
 
     // create charts
@@ -51,11 +161,14 @@
                 data: [],
                 fill: false,
                 borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1,
+                tension: 0,
                 animation: {
                     duration: 1000,
                 }
             }]
+        },
+        options: {
+            responsive: true,
         }
     })
 
@@ -69,7 +182,7 @@
                 data: [],
                 fill: false,
                 borderColor: '#ff6600',
-                tension: 0.1,
+                tension: 0,
                 animation: {
                     duration: 1000,
                 }
@@ -83,11 +196,11 @@
         data: {
             labels: [],
             datasets: [{
-                label: "pressure readings",
+                label: "air humidity readings",
                 data: [],
                 fill: false,
                 borderColor: '#33cc33',
-                tension: 0.1,
+                tension: 0,
                 animation: {
                     duration: 1000,
                     easing: "linear"
@@ -96,50 +209,159 @@
         }
     })
 
+    const soilChartCtx = document.getElementById("soilChart").getContext("2d");
+    const soilChartData = new Chart(soilChartCtx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "soil humidity readings",
+                data: [],
+                fill: false,
+                borderColor: '#d2691e',
+                tension: 0,
+                animation: {
+                    duration: 1000,
+                    easing: "linear"
+                }
+            }]
+        }
+    })
+
+    const averagesChartCtx = document.getElementById("averagesChart").getContext("2d");
+    const averagesChartData = new Chart(averagesChartCtx, {
+        type: 'bar',
+        labels: "",
+        data: {
+            labels: ["Light", "Tempreture", "Humidity"],
+            datasets: [{
+                label: 'My First Dataset',
+                data: [65, 59, 80, 81, 56, 55, 40],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(255, 159, 64, 0.2)',
+                    'rgba(255, 205, 86, 0.2)',
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(201, 203, 207, 0.2)'
+                ],
+                borderColor: [
+                    'rgb(255, 99, 132)',
+                    'rgb(255, 159, 64)',
+                    'rgb(255, 205, 86)',
+                    'rgb(75, 192, 192)',
+                    'rgb(54, 162, 235)',
+                    'rgb(153, 102, 255)',
+                    'rgb(201, 203, 207)'
+                ],
+                borderWidth: 1
+            }]
+        },
+
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        },
+    })
+
     // create a socket.io connection
     const socket = io();
 
-    socket.on("event", d => {
-        lightChartData.data.datasets[0].data.push(d.value.lightIntensity)
-        lightChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
 
-        // if chart contains more than 20 readings, being to pop
-        if (lightChartData.data.datasets[0].data.length > 20) {
-            lightChartData.data.datasets.forEach((dataset) => {
-                dataset.data.shift(); // Remove the first data point
-            });
-            lightChartData.data.labels.shift();
+    async function main() {
+
+        // fetch data
+        let previousData = await axios.get("/previousData");
+
+        if (previousData.status !== 200) {
+            alert("Failed to fetch historical data");
         }
 
-        lightChartData.update();
+        let prvData = previousData.data;
 
-        tempChartData.data.datasets[0].data.push(d.value.temperature)
-        tempChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
+        if (prvData.length) {
+            prvData.forEach(reading => {
+                lightChartData.data.datasets[0].data.push(reading.lightIntensity)
+                lightChartData.data.labels.push(`${new Date(reading.timestamp).getSeconds()}`);
 
-        // if chart contains more than 20 readings, being to pop
-        if (tempChartData.data.datasets[0].data.length > 20) {
-            tempChartData.data.datasets.forEach((dataset) => {
-                dataset.data.shift(); // Remove the first data point
-            });
-            tempChartData.data.labels.shift();
+                tempChartData.data.datasets[0].data.push(reading.temperature)
+                tempChartData.data.labels.push(`${new Date(reading.timestamp).getSeconds()}`);
+
+                pressureChartData.data.datasets[0].data.push(reading.humidity)
+                pressureChartData.data.labels.push(`${new Date(reading.timestamp).getSeconds()}`);
+
+                soilChartData.data.datasets[0].data.push(reading.soil_analog)
+                soilChartData.data.labels.push(`${new Date(reading.timestamp).getSeconds()}`);
+
+                [lightChartData, tempChartData, pressureChartData, soilChartData].map(chart => {
+                    chart.update();
+                })
+            })
         }
 
-        tempChartData.update();
+        socket.on("event", d => {
+            lightChartData.data.datasets[0].data.push(d.value.lightIntensity)
+            lightChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
 
-        pressureChartData.data.datasets[0].data.push(d.value.pressure)
-        pressureChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
+            // if chart contains more than 20 readings, being to pop
+            if (lightChartData.data.datasets[0].data.length > 20) {
+                lightChartData.data.datasets.forEach((dataset) => {
+                    dataset.data.shift(); // Remove the first data point
+                });
+                lightChartData.data.labels.shift();
+            }
 
-        // if chart contains more than 20 readings, being to pop
-        if (pressureChartData.data.datasets[0].data.length > 20) {
-            pressureChartData.data.datasets.forEach((dataset) => {
-                dataset.data.shift(); // Remove the first data point
-            });
-            pressureChartData.data.labels.shift();
-        }
+            lightChartData.update();
 
-        pressureChartData.update();
-    })
+            tempChartData.data.datasets[0].data.push(d.value.temperature)
+            tempChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
 
+            // if chart contains more than 20 readings, being to pop
+            if (tempChartData.data.datasets[0].data.length > 20) {
+                tempChartData.data.datasets.forEach((dataset) => {
+                    dataset.data.shift(); // Remove the first data point
+                });
+                tempChartData.data.labels.shift();
+            }
+
+            tempChartData.update();
+
+            pressureChartData.data.datasets[0].data.push(d.value.humidity)
+            pressureChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
+
+            // if chart contains more than 20 readings, being to pop
+            if (pressureChartData.data.datasets[0].data.length > 20) {
+                pressureChartData.data.datasets.forEach((dataset) => {
+                    dataset.data.shift(); // Remove the first data point
+                });
+                pressureChartData.data.labels.shift();
+            }
+
+            pressureChartData.update();
+
+            soilChartData.data.datasets[0].data.push(d.value.soil_analog)
+            soilChartData.data.labels.push(`${new Date(d.timestamp).getSeconds()}`);
+
+            // if chart contains more than 20 readings, being to pop
+            if (soilChartData.data.datasets[0].data.length > 20) {
+                soilChartData.data.datasets.forEach((dataset) => {
+                    dataset.data.shift(); // Remove the first data point
+                });
+                soilChartData.data.labels.shift();
+            }
+
+            soilChartData.update();
+
+
+        })
+
+    }
+
+    main();
 
 
 </script>
@@ -148,7 +370,8 @@
     #navbar {
         width: 100%;
         min-height: 40px;
-        background-color: lightgrey;
+        background-color: #1a4f31;
+        color: white;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -165,4 +388,47 @@
     * {
         font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
     }
+
+    .datatab {
+        width: 100%;
+        min-height: 50px;
+        border: 1px solid lightgrey;
+        padding: 5px 13px;
+        background-color: white;
+    }
+
+    .datatab .data-title {
+        margin-bottom: 3px;
+    }
+
+    .tab-icon {
+        height: 100px;
+        width: auto;
+    }
+
+    #battery {
+        width: 100px;
+        min-height: 20px;
+        border-radius: 20px;
+        background-color: green;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9em;
+    }
+
+    body {
+        /* background-color: #ededed; */
+    }
+
+    #mascot {
+        width: auto;
+        height: 140px;
+        background-color: lightblue;
+        border-radius: 50%;
+        border: 1px solid lightgrey;
+    }
+
+    /* #8f9349b0 */
 </style>
