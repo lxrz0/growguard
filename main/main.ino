@@ -119,8 +119,6 @@ void connectMqtt () {
       client.subscribe("sensors/action");
 
       delay(100);
-
-      client.publish("sensors/data", "hello world", true);
     } else {
       Serial.print("Failed to connect to MQTT broker, rc=");
       Serial.println(client.state());
@@ -131,8 +129,12 @@ void connectMqtt () {
 
 void setup() {
   Serial.begin(BAUD_RATE);
-  
+  pinMode(34, INPUT);
+  pinMode(39, INPUT);
+
   setupWifi();
+
+
   
   
   // /** handle mqtt connection **/
@@ -166,13 +168,24 @@ void loop() {
 
   // while (!Serial); // wait for serial
 
-  Serial.print("Temperature = ");
-  Serial.print(bme.readTemperature());
-  Serial.println(" *C");
-  Serial.println();
-  Serial.print(bme.readPressure());
-  Serial.println();
-  Serial.print(bme.readHumidity());
+  // Serial.print("Temperature = ");
+  // Serial.print(bme.readTemperature());
+  // Serial.println(" *C");
+  // Serial.println();
+  // Serial.print(bme.readPressure());
+  // Serial.print(bme.readHumidity());
+  // Serial.println();
+
+  const uint dPin = 34;
+  const uint aPin = 39; // readings from 0 - 4095
+
+  int dPinData = digitalRead(dPin);
+  ushort aPinData = analogRead(aPin);
+  Serial.print("Reading?!?!?!"); 
+  Serial.println(dPinData);
+  Serial.println(aPinData);
+
+  
 
   if (!client.connected()) connectMqtt();
   client.loop();
@@ -185,14 +198,16 @@ void loop() {
   jsonPayload["temperature"] = bme.readTemperature();
   jsonPayload["humidity"] = bme.readHumidity();
   jsonPayload["pressure"] = bme.readPressure();
-
-  delay(1000);
+  jsonPayload["soil_digital"] = dPinData;
+  jsonPayload["soil_analog"] = aPinData;
   float lux = LightSensor.readLightLevel();
-  Serial.println(lux);
+
+  // delay(60000 * 10); // add 10 minute delay
+  delay(1000);
 
   String payload;
 
   serializeJson(jsonPayload, payload);
 
-  // client.publish("sensors/data", payload.c_str(), true);
+  client.publish("sensors/data", payload.c_str(), true);
 }
