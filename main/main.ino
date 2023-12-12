@@ -203,7 +203,7 @@ void loop() {
   float lux = LightSensor.readLightLevel();
 
   // delay(60000 * 10); // add 10 minute delay
-  delay(1000);
+  delay(10000);
 
   String payload;
 

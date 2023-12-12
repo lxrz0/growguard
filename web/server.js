@@ -4,7 +4,6 @@ const app = express();
 const l = console.log;
 const path = require("path");
 const mqtt = require("mqtt");
-
 app.set("view engine", "ejs");
 app.set("views", "public")
 app.use("/public", express.static(path.join(__dirname, "public")))
@@ -14,8 +13,18 @@ app.use("/modules", express.static(path.join(__dirname, "node_modules"))) // exp
 const http = require("http");
 const server = http.createServer(app);
 const io = require("socket.io")(server);
+const mongoose = require("mongoose");
+const SensorLog = require("./public/models/SensorLog");
+const moment = require("moment/moment");
+const TelegramBot = require("node-telegram-bot-api");
+const PlantConfig = require("./public/models/PlantConfig");
+
+require("dotenv").config();
 
 const sensorDataStorage = [];
+
+// connect to database
+mongoose.connect("mongodb://127.0.0.1:27017/sensor_history", {})
 
 
 // connect to MQTT broker
@@ -28,6 +37,43 @@ const client = mqtt.connect({
     username: "cl586", 
     password: "cEu9NQfrRkvUmdYw6ZShn2" // put into env variable
 });
+
+/**
+ * Method creates plant config if it does not exist
+ */
+const createPlantConfig = async _ => {
+    try {
+        const exists = await PlantConfig.countDocuments();
+        if (exists == 1) return // do nothing
+
+        // create new config with 0 values. Values need to be configured on the UI
+        await new PlantConfig({
+            temperature: 20, 
+            soil_moisture: 50, 
+            sunlight: 100,
+        }).save();
+    }
+    
+    catch (error) {
+        console.log("(-) Failed to initialise plant config: ");
+        console.log(error);    
+    }
+}
+
+// setup telegram bot for notifications
+const bot = new TelegramBot(process.env.TGBOT_KEY, {polling: true})
+
+const tg_user_id = "664169986"; // my telegram user id
+
+// bot.sendMessage(tg_user_id, "🪴 Hello! I'm growguard. Looks like Dave needs to be watered")
+
+async function main () {
+    console.log("[+] initialising plant config")
+    await createPlantConfig();
+}
+
+main();
+
 
 /** method saves a json payload in memory - limited to 10 */
 const saveInMemory = function (jsonPayload) {
@@ -54,7 +100,7 @@ client.on("connect", _ => {
     })
 })
 
-client.on("message", (topic, data) => {
+client.on("message", async (topic, data) => {
     l(Buffer.from(data).toString());
 
     let payload = {...JSON.parse(Buffer.from(data).toString()), timestamp: Date.now()};
@@ -68,8 +114,8 @@ client.on("message", (topic, data) => {
         l(error.message)
     }
 
-    
-
+    // save to database
+    await new SensorLog({data: payload}).save();
     saveInMemory(payload);
 })
 
@@ -81,7 +127,87 @@ app.get("/", (req, res) => {
     res.render("login")
 });
 
-app.get("/previousData", (req, res) => {
+app.get("/historical", async (req, res) => {
+    // get previous weeks data 
+    try {
+        const weeksData = await SensorLog.find({createdAt: {$gte: moment().subtract(1, "week").valueOf()}});
+
+        if (!weeksData || !weeksData.length) {
+            return res.send({
+                temperature: 0, 
+                soil_moisture: 0, 
+                air_humidity: 0, 
+                sunlight: 0, 
+            })
+        }
+
+        // aggregate all the values for each property and get the average
+        let aggregateData = weeksData.reduce((all, log) => {
+            // console.log(log.data);
+            all.temperature += log.data.temperature;
+            all.soil_moisture += log.data.soil_analog;
+            all.air_humidity += log.data.humidity;
+            all.sunlight += log.data.lightIntensity;
+
+            return all;
+        }, {
+            temperature: 0, 
+            soil_moisture: 0, 
+            air_humidity: 0, 
+            sunlight: 0, 
+        });
+
+        // get averages of all
+        Object.keys(aggregateData).forEach(key => {
+            aggregateData[key] = (aggregateData[key] / weeksData.length);
+        });
+
+        return res.send({
+            weekAggregate: aggregateData, 
+            weekRaw: weeksData
+        });
+    } 
+    
+    catch (error) {
+        console.log(error);
+        return res.status(500).send("internal server error")    
+    }
+});
+
+app.get("/correlation", async (req, res) => {
+    try {
+        // get soil moisture and temperature data for last 100 data points
+        const data = await SensorLog.find().limit(1000);
+        if (!data) {
+            throw new Error ("could not find any data")
+        }
+        return res.send(data);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).send([])
+    }
+})
+
+app.get("/plantconfig", async (req, res) => {
+    try {
+        let conf = await PlantConfig.findOne();
+        return res.send(conf);
+    } catch (error) {
+        console.log(error);
+        console.log("(-) failed to find plant config");
+
+        return res.status(500).send({});
+    }
+})
+
+app.get("/previousData", async (req, res) => {
+    // retrieve from database if sensorDataStorage is empty
+    if (!sensorDataStorage.length) {
+        const pastSensorData = await SensorLog.find().limit(20);
+        return res.send(pastSensorData)
+    }
+
+    // send cached sensor data
     return res.send(sensorDataStorage);
 })
 
