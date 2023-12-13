@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Growguard Dashboard (Dave)</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪴</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪴</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
         crossorigin="anonymous"></script>
@@ -125,27 +126,49 @@
         <div class="row mx-0 align-items-center">
             <div class="col-md-4">
                 <div class="p-3">
-                    <h3>Plant Configuration</h3>
-                    <p class="text-secondary">Set your plant's target metrics</p>
+                    <h3>⚙️ Plant Configuration</h3>
+                    <p class="text-secondary mb-0">Set your plant's target metrics</p>
+                    <p class="text-secondary small">Placeholder values are the currently set values</p>
                     <div class="form-group">
                         <label for="">temperature</label>
-                        <input type="text" class="form-control" placeholder="Celcius">
+                        <input type="text" class="form-control"
+                            :placeholder="`${plantTargetMetrics.temperature} Celcius`"
+                            v-model="updateMetrics.temperature">
                     </div>
                     <div class="form-group">
                         <label for="">Soil Moisture</label>
-                        <input type="text" class="form-control" placeholder="LOW | MEDIUM | HIGH">
+                        <input type="text" class="form-control" :placeholder="`${plantTargetMetrics.soil_moisture}%`"
+                            v-model="updateMetrics.moisture">
                     </div>
                     <div class="form-group">
                         <label for="">Sunlight</label>
-                        <input type="text" class="form-control" placeholder="LOW | MEDIUM | HIGH">
+                        <input type="text" class="form-control" :placeholder="`${plantTargetMetrics.sunlight} LUX`"
+                            v-model="updateMetrics.sunlight">
                     </div>
                     <div class="form-group mt-2">
-                        <button class="btn btn-success">Update</button>
+                        <button class="btn btn-success" @click="requestConfigChange">Update</button>
                     </div>
 
-                    <code>
-                        {{plantTargetMetrics}}
-                    </code>
+                    <div class="p-3 mt-2 rounded bg-light">
+                        <p class="m-0">💡 Configure your plant right!</p>
+                        <hr>
+                        <p>Common Light Measurements | Luminous Flux (lux) ☀️</p>
+                        <ul>
+                            <li>Bright Summer Day: 100,000 Lux (~10,000 footcandles)</li>
+                            <li>Full Daylight: 10,000 Lux (~1,000 footcandles)</li>
+                            <li>Overcast Day: 1,000 Lux (~100 footcandles)</li>
+                            <li>Traditional Office Lighting: 300-500 Lux (30-50 footcandles)</li>
+                            <li>Common Stairway: 50-100 Lux (5-10 footcandles)</li>
+                            <li>Twilight: 10 Lux (1 footcandle)</li>
+                            <li>Full Moon: < 1 Lux (< 0.1 footcandle)</li>
+                        </ul>
+
+                        <p>Soil Moisture 🌱</p>
+                        <p class="small">The growgard soil moisture sensor operates by measuring the resistance of the
+                            soil to the passage of an electric current. Enter a % indicating soil moisture. This will be
+                            used as your target. Adjust as needed. The GrowGuards analog light will also turn on when
+                            the soil is too dry. This will serve as an indicator</p>
+                    </div>
                 </div>
             </div>
 
@@ -155,7 +178,9 @@
                     <div class="">
                         <canvas id="growthIndexChart"></canvas>
                     </div>
-                    <h4 class="text-center"><span :style="'color: ' + getScoreColor()">{{plantTargetMetrics.index}}</span>/<span style="color: grey">100</span>
+                    <h4 class="text-center"><span
+                            :style="'color: ' + getScoreColor()">{{plantTargetMetrics.index}}</span>/<span
+                            style="color: grey">100</span>
                     </h4>
                     <p>Your daily growth creates a score based on your plants metrics over the course of the day and
                         how they compare to your target evironment metrics. temperature, Light and humidity. The
@@ -207,7 +232,7 @@
         el: "#app-wrapper",
         data() {
             return {
-                moment: moment, 
+                moment: moment,
                 weekData: {
                     sunlight: 0,
                     air_humidity: 0,
@@ -220,24 +245,34 @@
                     soil_moisture: LEVELS.LOW, // LOW, MEDIUM, HIGH
                     sunlight: LEVELS.LOW,
                     index: 0,
+                },
+
+                // form to update metrics
+                updateMetrics: {
+                    temperature: "",
+                    moisture: "",
+                    sunlight: "",
                 }
             }
         },
 
         async beforeMount() {
+            console.log("getting")
+            await this.getPlantConfig();
+            console.log("got")
             this.getPastData();
 
             setInterval(this.getPastData, 5 * 1000)
 
             // fetch plant config data
             let plantConfig = await axios.get("/plantconfig");
-            
+
             if (plantConfig.status !== 200) {
                 alert("Failed to get plant config. Please refresh");
                 return;
             }
 
-            let {data} = plantConfig;
+            let { data } = plantConfig;
 
             this.plantTargetMetrics.sunlight = data.sunlight;
             this.plantTargetMetrics.soil_moisture = data.soil_moisture;
@@ -358,6 +393,53 @@
         },
 
         methods: {
+
+            async getPlantConfig() {
+                await axios.get("/plantconfig").then(r => {
+
+                    console.log(r.data);
+
+                    if (r.status !== 200) {
+                        alert("Faild to get plant configuation file");
+                        return;
+                    }
+
+                    this.plantTargetMetrics.temperature = r.data.temperature;
+                    this.plantTargetMetrics.soil_moisture = r.data.soil_moisture;
+                    this.plantTargetMetrics.sunlight = r.data.sunlight;
+                })
+
+                return;
+            },
+
+            requestConfigChange() {
+
+                // Object.keys(this.updateMetrics).map(key => {
+                //     if (!this.updateMetrics[key].length) {
+                //         this.updateMetrics[key] = null;
+                //     }
+                // })
+
+                axios.post("/setplantconfig", {
+                    temperature: this.updateMetrics.temperature || this.plantTargetMetrics.temperature,
+                    moisture: this.updateMetrics.moisture || this.plantTargetMetrics.soil_moisture,
+                    sunlight: this.updateMetrics.sunlight || this.plantTargetMetrics.sunlight
+                }).then(r => {
+
+                    // very silly fix but it works
+                    Object.keys(this.updateMetrics).map(key => {
+                        this.updateMetrics[key] = "";
+                    })
+
+                    if (r.data.success) {
+                        alert("Plant target metrics updated!");
+
+                        this.getPlantConfig();
+                        this.getPastData();
+                    }
+                })
+            },
+
             getPastData() {
                 axios.get("/historical").then(response => {
                     let {
@@ -382,15 +464,15 @@
                     // console.log(response.data)
                     let dayAggregate = dayData.reduce((all, log) => {
                         all.temperature += log.data.temperature,
-                        all.soil_moisture += log.data.soil_analog, 
-                        all.air_humidity += log.data.humidity, 
-                        all.sunlight += log.data.lightIntensity
+                            all.soil_moisture += log.data.soil_analog,
+                            all.air_humidity += log.data.humidity,
+                            all.sunlight += log.data.lightIntensity
 
                         return all;
                     }, {
-                        temperature: 0, 
-                        soil_moisture: 0, 
-                        air_humidity: 0, 
+                        temperature: 0,
+                        soil_moisture: 0,
+                        air_humidity: 0,
                         sunlight: 0
                     })
 
@@ -403,25 +485,27 @@
                     this.calculateDailyIndex(dayAggregate.temperature, dayAggregate.soil_moisture, dayAggregate.sunlight)
 
                 });
-            }, 
+            },
 
             /** 
              * Method calculates the daily growth score 
              * avgSoilMoisture argument is converted to a percentage. Sensor takes max reading of 4500
              * */
-            calculateDailyIndex (avgTemperature, avgSoilMoisture, avgSunlight) {
+            calculateDailyIndex(avgTemperature, avgSoilMoisture, avgSunlight) {
+
+                console.log({plants: this.plantTargetMetrics})
 
                 avgSoilMoisture = (avgSoilMoisture / 4500) * 100; // convert to %
 
-                console.log({avgSoilMoisture})
+                console.log({ avgSoilMoisture })
 
 
                 // retrieve these values from DB and store in state
-                const targetTemperature = 25;       // degees C
-                const targetMoisture = 40;          // percent RH
-                const targetSunlight = 90;        // LUX
+                const targetTemperature = this.plantTargetMetrics.temperature;       // degees C
+                const targetMoisture = this.plantTargetMetrics.soil_moisture;          // percent RH
+                const targetSunlight = this.plantTargetMetrics.sunlight;        // LUX
 
-                const weightPerProperty = 1/3;
+                const weightPerProperty = 1 / 3;
 
                 const maxTemperatureDeviation = 2   // degrees C
                 const maxMoistureDeviation = 5      // %
@@ -430,7 +514,7 @@
                 // temperatureScore = (maxDeviationTemperature - abs(targetTemperature - actualTemperature)) / maxDeviationTemperature * 100 * weightTemperature
 
                 const tempScore = Math.max(
-                    (maxTemperatureDeviation - Math.abs(targetTemperature - avgTemperature)) / maxTemperatureDeviation * 100 * weightPerProperty, 
+                    (maxTemperatureDeviation - Math.abs(targetTemperature - avgTemperature)) / maxTemperatureDeviation * 100 * weightPerProperty,
                     0
                 );
                 const moistureScore = Math.max(
@@ -438,10 +522,10 @@
                     0
                 );
                 const sunlightScore = Math.max(
-                    (maxSunlightDeviation - Math.abs(targetSunlight - avgSunlight)) / maxSunlightDeviation * 100 * weightPerProperty, 
+                    (maxSunlightDeviation - Math.abs(targetSunlight - avgSunlight)) / maxSunlightDeviation * 100 * weightPerProperty,
                     0
                 )
-                
+
                 console.log(tempScore, moistureScore, sunlightScore)
 
                 console.log(
@@ -458,7 +542,7 @@
 
             },
 
-            getScoreColor () {
+            getScoreColor() {
                 return this.plantTargetMetrics.index <= 30 ? "Red" : (this.plantTargetMetrics.index > 30 && this.plantTargetMetrics.index <= 70 ? "Orange" : "Green")
             }
         }
@@ -466,7 +550,7 @@
 </script>
 
 <script>
-    
+
 
     // create charts
     const lightChartCtx = document.getElementById("lightChart").getContext("2d");

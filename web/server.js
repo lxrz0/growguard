@@ -18,6 +18,10 @@ const SensorLog = require("./public/models/SensorLog");
 const moment = require("moment/moment");
 const TelegramBot = require("node-telegram-bot-api");
 const PlantConfig = require("./public/models/PlantConfig");
+const bodyParser = require("body-parser");
+
+app.use(bodyParser({extended: false}));
+app.use(bodyParser.json());
 
 require("dotenv").config();
 
@@ -173,6 +177,30 @@ app.get("/historical", async (req, res) => {
         return res.status(500).send("internal server error")    
     }
 });
+
+app.post("/setplantconfig", async (req, res) => {
+    try {
+
+        console.log("hello!");
+        console.log(req.body);
+
+        // no form validation as i'm the only one with access currently
+        const {temperature, moisture, sunlight} = req.body;
+
+       // find config and update
+       let c = await PlantConfig.findOne();
+       c.temperature = temperature; 
+       c.soil_moisture = moisture;
+       c.sunlight = sunlight;
+
+       await c.save();
+
+       return res.status(200).send({success: true})
+
+    } catch (error) {
+        return res.status(500).send("Failed to process update")
+    }
+})
 
 app.get("/correlation", async (req, res) => {
     try {
