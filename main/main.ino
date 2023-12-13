@@ -160,54 +160,95 @@ void setup() {
         Serial.println("Could not find a valid BME280 sensor at address 0x77 either!");
         while (1);
     }
+  }
 }
+
+const unsigned short MQTT_INTERVAL = 10 * 60; // 10 minutes in seconds (set to 10s)
+unsigned long lastMQTTUpdate = 0;
+
+/** create a JSON structure for data **/
+StaticJsonDocument<256> jsonPayload;
+
+bool bExceedNormalDeviation () {
+
+  Serial.println("checking deviation");
+
+  // check jsonPayload has previous data
+  if (!jsonPayload.containsKey("lightIntensity")) {return false;}
+
+  // check if there is a 5% deviation on any of the properties
+  float light = LightSensor.readLightLevel();
+  float temp = bme.readTemperature();
+  int soil = analogRead(39);
+
+  if (light > jsonPayload["lightIntensity"].as<float>() * 1.05) {
+    Serial.println("+5% > Light deviation");
+    jsonPayload["deviation"] = true;
+    jsonPayload["deviationProperty"] = "light";
+    return true;
+  }
+
+  if (temp > jsonPayload["temperature"].as<float>() * 1.05) {
+    jsonPayload["deviation"] = true;
+    jsonPayload["deviationProperty"] = "temperature";
+    return true;
+  }
+
+  if (soil > jsonPayload["soil_analog"].as<float>() * 1.05) {
+    jsonPayload["deviation"] = true;
+    jsonPayload["deviationProperty"] = "soil";
+    return true;
+  }
+  
+  return false;
 
 }
 
 void loop() {
 
-  // while (!Serial); // wait for serial
-
-  // Serial.print("Temperature = ");
-  // Serial.print(bme.readTemperature());
-  // Serial.println(" *C");
-  // Serial.println();
-  // Serial.print(bme.readPressure());
-  // Serial.print(bme.readHumidity());
-  // Serial.println();
-
   const uint dPin = 34;
   const uint aPin = 39; // readings from 0 - 4095
 
-  int dPinData = digitalRead(dPin);
-  ushort aPinData = analogRead(aPin);
-  Serial.print("Reading?!?!?!"); 
-  Serial.println(dPinData);
-  Serial.println(aPinData);
-
-  
-
-  if (!client.connected()) connectMqtt();
-  client.loop();
-
- /** create a JSON structure for data **/
-  StaticJsonDocument<256> jsonPayload;
-
   /** sensor readings **/
-  jsonPayload["lightIntensity"] = LightSensor.readLightLevel();
-  jsonPayload["temperature"] = bme.readTemperature();
-  jsonPayload["humidity"] = bme.readHumidity();
-  jsonPayload["pressure"] = bme.readPressure();
-  jsonPayload["soil_digital"] = dPinData;
-  jsonPayload["soil_analog"] = aPinData;
-  float lux = LightSensor.readLightLevel();
+    int dPinData = digitalRead(dPin);
+    ushort aPinData = analogRead(aPin);
+
+    bool deviated = bExceedNormalDeviation();
+
+    
+
+  if (millis() / 1000 > (lastMQTTUpdate / 1000) + MQTT_INTERVAL || deviated) {
+
+    jsonPayload["lightIntensity"] = LightSensor.readLightLevel();
+    jsonPayload["temperature"] = bme.readTemperature();
+    jsonPayload["humidity"] = bme.readHumidity();
+    jsonPayload["pressure"] = bme.readPressure();
+    jsonPayload["soil_digital"] = dPinData;
+    jsonPayload["soil_analog"] = aPinData;
+
+    Serial.print("Time to send!");
+    Serial.print("Reading?!?!?!"); 
+    Serial.println(dPinData);
+    Serial.println(aPinData);
+
+
+    if (!client.connected()) connectMqtt();
+    client.loop();
+    lastMQTTUpdate = millis();
+
+    String payload;
+    serializeJson(jsonPayload, payload);
+    client.publish("sensors/data", payload.c_str(), true);
+
+    // remove the deviation properties if they exist
+    if (jsonPayload.containsKey("deviation")) {
+      jsonPayload.remove("deviation");
+      jsonPayload.remove("deviationProperty");
+    }
+  }  
 
   // delay(60000 * 10); // add 10 minute delay
-  delay(10000);
+  delay(5000);
 
-  String payload;
-
-  serializeJson(jsonPayload, payload);
-
-  client.publish("sensors/data", payload.c_str(), true);
+  
 }
