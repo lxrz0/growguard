@@ -67,6 +67,12 @@ const createPlantConfig = async _ => {
 // setup telegram bot for notifications
 const bot = new TelegramBot(process.env.TGBOT_KEY, {polling: true})
 
+bot.on("message", msg => {
+    if (["hello", "hi", "yo", "hey"].includes(msg.text)) {
+        bot.sendMessage(msg.chat.id, "👋 Hello, I'm growguard. I'm your reporting assistant. Currently I'm only looking after Dave at the moment. Any changes in environment and I'll be the first to let you know!")
+    }
+})
+
 const tg_user_id = "664169986"; // my telegram user id
 
 // bot.sendMessage(tg_user_id, "🪴 Hello! I'm growguard. Looks like Dave needs to be watered")
@@ -108,6 +114,14 @@ client.on("message", async (topic, data) => {
     l(Buffer.from(data).toString());
 
     let payload = {...JSON.parse(Buffer.from(data).toString()), timestamp: Date.now()};
+
+    if (payload.deviation) {
+        await bot.sendMessage(tg_user_id, `⚠️ Woah did something happen? - The ${payload.deviationProperty} sensor detected a sudden and abnormally large change in reading`)
+    }
+
+    if (payload.soil_digital == 1) {
+        await bot.sendMessage(tg_user_id, `🪴 Looks like Dave needs to be watered`)
+    }
 
     try {
         io.emit("event", {
@@ -230,13 +244,22 @@ app.get("/plantconfig", async (req, res) => {
 
 app.get("/previousData", async (req, res) => {
     // retrieve from database if sensorDataStorage is empty
-    if (!sensorDataStorage.length) {
-        const pastSensorData = await SensorLog.find().limit(20);
-        return res.send(pastSensorData)
+    const pastSensorData = await SensorLog.find().limit(20).lean();
+    if (!pastSensorData.length) {
+        return res.send(sensorDataStorage)
     }
 
+    pastSensorData.map(p => {
+        p.timestamp = p.createdAt
+        Object.keys(p.data).forEach(key => {
+            p[key] = p.data[key]
+        })
+    });
+
+    console.log(pastSensorData)
+
     // send cached sensor data
-    return res.send(sensorDataStorage);
+    return res.send(pastSensorData);
 })
 
 app.get("/dashboard", (req, res) => {
