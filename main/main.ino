@@ -171,30 +171,28 @@ StaticJsonDocument<256> jsonPayload;
 
 bool bExceedNormalDeviation () {
 
-  Serial.println("checking deviation");
-
   // check jsonPayload has previous data
   if (!jsonPayload.containsKey("lightIntensity")) {return false;}
 
-  // check if there is a 5% deviation on any of the properties
+  // check if there is a 7% deviation on any of the properties
   float light = LightSensor.readLightLevel();
   float temp = bme.readTemperature();
   int soil = analogRead(39);
 
-  if (light > jsonPayload["lightIntensity"].as<float>() * 1.05) {
+  if (light > jsonPayload["lightIntensity"].as<float>() * 1.07) {
     Serial.println("+5% > Light deviation");
     jsonPayload["deviation"] = true;
     jsonPayload["deviationProperty"] = "light";
     return true;
   }
 
-  if (temp > jsonPayload["temperature"].as<float>() * 1.05) {
+  if (temp > jsonPayload["temperature"].as<float>() * 1.07) {
     jsonPayload["deviation"] = true;
     jsonPayload["deviationProperty"] = "temperature";
     return true;
   }
 
-  if (soil > jsonPayload["soil_analog"].as<float>() * 1.05) {
+  if (soil > jsonPayload["soil_analog"].as<float>() * 1.07) {
     jsonPayload["deviation"] = true;
     jsonPayload["deviationProperty"] = "soil";
     return true;
@@ -210,14 +208,14 @@ void loop() {
   const uint aPin = 39; // readings from 0 - 4095
 
   /** sensor readings **/
+  bool deviated = bExceedNormalDeviation();
+
+  if (lastMQTTUpdate == 0 || millis() / 1000 > lastMQTTUpdate + MQTT_INTERVAL || deviated) {
+
+    Serial.println("Emitting data");
+
     int dPinData = digitalRead(dPin);
     ushort aPinData = analogRead(aPin);
-
-    bool deviated = bExceedNormalDeviation();
-
-    
-
-  if (millis() / 1000 > (lastMQTTUpdate / 1000) + MQTT_INTERVAL || deviated) {
 
     jsonPayload["lightIntensity"] = LightSensor.readLightLevel();
     jsonPayload["temperature"] = bme.readTemperature();
@@ -234,7 +232,7 @@ void loop() {
 
     if (!client.connected()) connectMqtt();
     client.loop();
-    lastMQTTUpdate = millis();
+    lastMQTTUpdate = millis() / 1000;
 
     String payload;
     serializeJson(jsonPayload, payload);
